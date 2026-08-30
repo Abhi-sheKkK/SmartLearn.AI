@@ -1,1 +1,6 @@
-youtube-transcript-api 
+youtube-transcript-api
+yt-dlp
+opencv-python 
+groq
+python-dotenv
+scikit-image

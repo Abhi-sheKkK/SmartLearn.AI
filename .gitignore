@@ -1,0 +1,4 @@
+.env
+backend/storage/
+extracted_frames
+unique_frames

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SmartLearn.AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- KaTeX for math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+
+    <!-- highlight.js for code formatting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <a href="/" class="sidebar-brand">SmartLearn</a>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-target="notes-panel">
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line></svg></span>
+                    <span>Notes</span>
+                </div>
+                <div class="nav-item" data-target="chat-panel">
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></span>
+                    <span>Doubts</span>
+                </div>
+                <div class="nav-item" data-target="viva-panel">
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></span>
+                    <span>Viva</span>
+                </div>
+                <div class="nav-item" data-target="test-panel">
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>
+                    <span>MCQ Test</span>
+                </div>
+            </nav>
+
+            <a href="/" class="sidebar-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                All lectures
+            </a>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="lecture-header">
+                <a id="lecture-video-link" class="lecture-thumb" href="#" target="_blank" rel="noopener" aria-label="Watch original video on YouTube">
+                    <img id="lecture-thumbnail" alt="">
+                </a>
+                <div class="lecture-meta">
+                    <div class="lecture-eyebrow">YouTube Lecture</div>
+                    <h1 id="session-title-display" class="lecture-title">Loading session...</h1>
+                    <a id="lecture-source-link" class="lecture-source-link" href="#" target="_blank" rel="noopener">
+                        Watch original
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Notes Panel -->
+            <div id="notes-panel" class="content-panel active">
+                <div class="panel-toolbar">
+                    <h2 class="panel-title">Notes</h2>
+                    <div class="panel-actions">
+                        <button id="generate-notes-btn" class="btn-primary btn-sm">Generate Notes</button>
+                        <button id="download-pdf-btn" class="btn-secondary btn-sm" style="display: none;">Download PDF</button>
+                    </div>
+                </div>
+
+                <div id="notes-content-area" class="notes-content">
+                    <div class="empty-state">
+                        <p class="empty-state-text">Generate notes to get a structured summary of this lecture.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Panel -->
+            <div id="chat-panel" class="content-panel">
+                <div class="panel-toolbar">
+                    <h2 class="panel-title">Doubts</h2>
+                </div>
+
+                <div class="chat-container card">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="message assistant">
+                            <div class="message-avatar">AI</div>
+                            <div class="message-content">
+                                <p>Hi! I'm your doubt assistant. Ask me anything about the lecture.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-area">
+                        <textarea id="chat-input" class="chat-textarea input-field" placeholder="Type your question here... (Enter to send)"></textarea>
+                        <button id="chat-send-btn" class="chat-send-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viva Panel -->
+            <div id="viva-panel" class="content-panel">
+                <div class="panel-toolbar">
+                    <h2 class="panel-title">Viva Practice</h2>
+                </div>
+
+                <div id="viva-start-view" class="viva-container">
+                    <div class="empty-state card">
+                        <p class="empty-state-text">Ready to test your knowledge with an interactive viva session?</p>
+                        <button id="start-viva-btn" class="btn-primary" style="margin-top: 1.25rem;">Start Viva</button>
+                    </div>
+                </div>
+
+                <div id="viva-active-view" class="viva-container" style="display: none;">
+                    <div class="viva-status">
+                        <span class="badge badge-processing">Active Session</span>
+                        <div class="viva-score-display card" id="viva-progress">
+                            Question <span id="viva-q-count">1</span>
+                        </div>
+                    </div>
+
+                    <div id="viva-question-card" class="viva-question-card card">
+                        <h3 id="viva-question-text">Loading question...</h3>
+                    </div>
+
+                    <div id="viva-feedback-area" class="viva-feedback-card" style="display: none;"></div>
+
+                    <div class="viva-answer-area">
+                        <textarea id="viva-answer-input" class="viva-answer-textarea input-field" placeholder="Type your answer here..."></textarea>
+                    </div>
+
+                    <div class="viva-controls">
+                        <button id="viva-submit-btn" class="btn-primary">Submit Answer</button>
+                        <button id="viva-next-btn" class="btn-secondary" style="display: none;">Next Question</button>
+                        <button id="viva-end-btn" class="btn-ghost">End Session</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Panel -->
+            <div id="test-panel" class="content-panel">
+                <div class="panel-toolbar">
+                    <h2 class="panel-title">MCQ Test</h2>
+                </div>
+
+                <div id="test-config-view" class="test-container">
+                    <div class="test-config card">
+                        <h3>Configure Test</h3>
+                        <div class="config-row">
+                            <label for="test-q-count">Number of Questions:</label>
+                            <input type="range" id="test-q-count" min="5" max="20" value="10" step="5">
+                            <span id="test-q-count-display">10</span>
+                        </div>
+                        <div class="config-row">
+                            <label for="test-difficulty">Difficulty:</label>
+                            <select id="test-difficulty" class="input-field" style="width: auto;">
+                                <option value="easy">Easy</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <button id="generate-test-btn" class="btn-primary">Generate Test</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="test-active-view" class="test-container" style="display: none;">
+                    <div class="test-progress">
+                        <div id="test-progress-bar" class="test-progress-bar"></div>
+                    </div>
+
+                    <div id="test-questions-container">
+                        <!-- Questions injected here -->
+                    </div>
+
+                    <div class="test-submit-area">
+                        <button id="submit-test-btn" class="btn-primary">Submit Test</button>
+                    </div>
+                </div>
+
+                <div id="test-results-view" class="test-container" style="display: none;">
+                    <div class="test-results card">
+                        <div class="test-score" id="final-test-score">0%</div>
+                        <div class="test-score-label">Your Score</div>
+
+                        <div id="test-detailed-results" style="margin-top: 2rem;">
+                            <!-- Detailed results injected here -->
+                        </div>
+
+                        <div style="text-align: center; margin-top: 2rem;">
+                            <button id="retake-test-btn" class="btn-secondary">Take Another Test</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script src="/js/notes.js"></script>
+    <script src="/js/chat.js"></script>
+    <script src="/js/viva.js"></script>
+    <script src="/js/test.js"></script>
+</body>
+</html>

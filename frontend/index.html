@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartLearn.AI - Transform YouTube Lectures into Interactive Learning</title>
+    <meta name="description" content="Paste a YouTube lecture link and let AI generate comprehensive notes, answer your doubts, conduct vivas, and create personalized tests.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/landing.css">
+</head>
+<body>
+    <nav class="landing-nav">
+        <a href="/" class="logo">
+            <span class="icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </span>
+            SmartLearn.AI
+        </a>
+        <span class="nav-tagline">AI-Powered Learning from YouTube</span>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <span class="hero-eyebrow">Study Toolkit</span>
+            <h1 class="hero-title">Turn Any YouTube Lecture Into a Complete Study Course</h1>
+            <p class="hero-subtitle">Paste a lecture link and get structured notes, a doubt-solving assistant, viva practice, and self-graded tests — generated automatically.</p>
+            <div class="url-input-wrapper">
+                <input type="url" id="youtube-url-input" class="url-input" placeholder="Paste YouTube lecture URL here..." autocomplete="off">
+                <button id="submit-url-btn" class="url-submit-btn">
+                    <span class="btn-text">Get Started</span>
+                    <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span>
+                </button>
+            </div>
+            <p id="error-message" class="error-message" style="display: none;"></p>
+            <p class="trust-note">No account required. Works with any public lecture video.</p>
+        </div>
+    </section>
+
+    <section class="features-grid" id="features">
+        <div class="feature-card card">
+            <div class="feature-icon notes">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><line x1="8" y1="9" x2="10" y2="9"></line></svg>
+            </div>
+            <h3>Structured Notes</h3>
+            <p>AI-generated notes with LaTeX equations, diagrams, and key frames extracted directly from the lecture.</p>
+        </div>
+        <div class="feature-card card">
+            <div class="feature-icon chat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <h3>Doubt Assistant</h3>
+            <p>Ask anything about the lecture and get precise, contextual answers grounded in the content.</p>
+        </div>
+        <div class="feature-card card">
+            <div class="feature-icon viva">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </div>
+            <h3>Viva Practice</h3>
+            <p>Rehearse for oral exams and interviews with AI-led viva sessions based on the lecture material.</p>
+        </div>
+        <div class="feature-card card">
+            <div class="feature-icon test">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            </div>
+            <h3>MCQ Tests</h3>
+            <p>Assess your understanding with auto-generated quizzes, scoring, and detailed explanations.</p>
+        </div>
+    </section>
+
+    <section class="how-it-works">
+        <div class="section-heading">
+            <h2>How It Works</h2>
+            <p>Three steps between a video link and a ready-to-study course.</p>
+        </div>
+        <div class="steps-row">
+            <div class="step-item">
+                <div class="step-number">1</div>
+                <h4>Paste the link</h4>
+                <p>Drop in a YouTube lecture, tutorial, or seminar URL.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-number">2</div>
+                <h4>AI processes the video</h4>
+                <p>The transcript, visuals, and key frames are analyzed automatically.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-number">3</div>
+                <h4>Study your way</h4>
+                <p>Review notes, ask doubts, attempt a viva, or take a test.</p>
+            </div>
+        </div>
+    </section>
+
+    <div id="processing-overlay" class="processing-overlay">
+        <div class="processing-panel">
+            <h2 class="processing-title">
+                <span class="loader"></span>
+                Processing Your Lecture
+            </h2>
+            <div class="processing-steps">
+                <div class="progress-step" data-step="transcript">
+                    <div class="step-icon">1</div>
+                    <span class="step-label">Extracting transcript...</span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="progress-step" data-step="analyzing">
+                    <div class="step-icon">2</div>
+                    <span class="step-label">Analyzing visual cues...</span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="progress-step" data-step="frames">
+                    <div class="step-icon">3</div>
+                    <span class="step-label">Extracting key frames...</span>
+                </div>
+                <div class="step-connector"></div>
+                <div class="progress-step" data-step="ready">
+                    <div class="step-icon">4</div>
+                    <span class="step-label">Preparing your dashboard...</span>
+                </div>
+            </div>
+            <p class="processing-note" style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.85rem; text-align: center;">This may take a few minutes for longer lectures.</p>
+        </div>
+    </div>
+
+    <footer class="landing-footer">
+        <p>&copy; 2025 SmartLearn.AI</p>
+    </footer>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: smartlearn-ai
+    env: python
+    buildCommand: "pip install -r requirements.txt && apt-get update && apt-get install -y ffmpeg libgl1-mesa-glx"
+    startCommand: "uvicorn backend.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: smartlearn-frames
+      - key: GROQ_MODEL
+        value: meta-llama/llama-4-scout-17b-16e-instruct

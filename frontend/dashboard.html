@@ -129,6 +129,7 @@
 
                     <div id="viva-question-card" class="viva-question-card card">
                         <h3 id="viva-question-text">Loading question...</h3>
+                        <audio id="viva-audio" class="viva-audio" controls preload="none" style="display: none;"></audio>
                     </div>
 
                     <div id="viva-feedback-area" class="viva-feedback-card" style="display: none;"></div>
@@ -140,6 +141,7 @@
                     <div class="viva-controls">
                         <button id="viva-submit-btn" class="btn-primary">Submit Answer</button>
                         <button id="viva-next-btn" class="btn-secondary" style="display: none;">Next Question</button>
+                        <button id="viva-skip-btn" class="btn-secondary" style="display: none;">Finalize as is</button>
                         <button id="viva-end-btn" class="btn-ghost">End Session</button>
                     </div>
                 </div>
@@ -211,6 +213,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
 
+    <script src="/js/markdown.js"></script>
     <script src="/js/api.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/notes.js"></script>

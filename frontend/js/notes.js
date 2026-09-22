@@ -11,8 +11,11 @@ window.NotesModule = (() => {
     };
     marked.setOptions({ renderer });
 
+    let hasNotes = false;
+
     const showSkeleton = () => {
         contentArea.innerHTML = `
+            <p id="notes-progress" class="stream-status">Preparing notes...</p>
             <div class="notes-skeleton title"></div>
             <div class="notes-skeleton"></div>
             <div class="notes-skeleton"></div>
@@ -24,7 +27,7 @@ window.NotesModule = (() => {
     };
 
     const renderNotes = (markdownText) => {
-        const html = marked.parse(markdownText);
+        const html = MD.render(markdownText);
         contentArea.innerHTML = html;
         
         // Render math
@@ -45,16 +48,37 @@ window.NotesModule = (() => {
             hljs.highlightElement(block);
         });
 
+        hasNotes = true;
         generateBtn.textContent = 'Regenerate Notes';
         downloadBtn.style.display = 'inline-block';
     };
 
+    const WORKER_LABELS = { summarizer: 'Summary', latex: 'Equations', diagram_mapper: 'Diagrams' };
+
     const handleGenerate = async () => {
         showSkeleton();
         generateBtn.disabled = true;
+        const done = new Set();
         try {
-            const res = await API.generateNotes(currentSessionId);
-            renderNotes(res.markdown || res.notes || '');
+            const res = await API.agentStream(
+                currentSessionId,
+                { action: 'generate_notes', params: { refresh: hasNotes } },
+                {
+                    // The three workers (summary / equations / diagrams) run in parallel on the server.
+                    notes_progress: (d) => {
+                        if (d.status === 'done') done.add(WORKER_LABELS[d.worker] || d.worker);
+                        const el = document.getElementById('notes-progress');
+                        if (el) el.textContent = done.size ? `Ready: ${[...done].join(', ')}. Combining...` : 'Preparing notes...';
+                    },
+                    retry: (d) => {
+                        const el = document.getElementById('notes-progress');
+                        if (el) el.textContent = d.fallback ? 'Retrying with a backup model...' : 'Retrying...';
+                    },
+                }
+            );
+            const notes = res.state && res.state.notes_draft;
+            if (!notes) throw new Error(res.content || 'No notes were generated.');
+            renderNotes(notes);
         } catch (err) {
             contentArea.innerHTML = `<div class="empty-state"><p class="empty-state-text" style="color:var(--error)">Failed to generate notes: ${err.message}</p></div>`;
         } finally {
@@ -81,9 +105,9 @@ window.NotesModule = (() => {
 
     const loadExisting = async () => {
         try {
-            const res = await API.getNotes(currentSessionId);
-            if (res && (res.markdown || res.notes)) {
-                renderNotes(res.markdown || res.notes);
+            const res = await API.getAgentState(currentSessionId);
+            if (res && res.notes_draft) {
+                renderNotes(res.notes_draft);
             }
         } catch (err) {
             // No notes exist yet, do nothing (show empty state)

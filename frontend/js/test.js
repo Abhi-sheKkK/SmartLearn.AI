@@ -90,8 +90,14 @@ window.TestModule = (() => {
         const diff = diffSelect.value;
         
         try {
-            const res = await API.generateTest(currentSessionId, count, diff);
-            const questions = res.questions || res.test_questions || [];
+            const res = await API.agentOnce(currentSessionId, {
+                action: 'generate_test',
+                params: { num_questions: count, difficulty: diff },
+            });
+            const questions = (res.state && res.state.quiz && res.state.quiz.questions) || [];
+            if (questions.length === 0) {
+                throw new Error(res.content || 'No questions were generated.');
+            }
             renderQuestions(questions);
             configView.style.display = 'none';
             activeView.style.display = 'block';
@@ -121,8 +127,14 @@ window.TestModule = (() => {
                 answersMap[q.id] = String(optIndex);
             });
 
-            const res = await API.submitTest(currentSessionId, answersMap);
-            renderResults(res);
+            const res = await API.agentOnce(currentSessionId, {
+                action: 'submit_test',
+                params: { answers: answersMap },
+            });
+            if (!res.state || !res.state.test_result) {
+                throw new Error(res.content || 'The test could not be graded.');
+            }
+            renderResults(res.state.test_result);
             
             activeView.style.display = 'none';
             resultsView.style.display = 'block';

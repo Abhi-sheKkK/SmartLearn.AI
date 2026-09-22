@@ -15,3 +15,7 @@ pydantic-settings
 python-multipart
 httpx
 markdown
+langgraph-checkpoint-sqlite
+ddgs
+gTTS
+langsmith

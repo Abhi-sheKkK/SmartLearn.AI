@@ -43,40 +43,75 @@ const API = {
         return this.request(`/sessions/${sessionId}/frames`);
     },
 
-    async generateNotes(sessionId) {
-        return this.request(`/sessions/${sessionId}/notes`, { method: 'POST' });
-    },
+    // ---- Unified agent endpoint: POST /sessions/{id}/agent -------------------------------------
 
-    async getNotes(sessionId) {
-        return this.request(`/sessions/${sessionId}/notes`);
-    },
-
-    async sendChat(sessionId, message, agentType = 'doubt') {
-        return this.request(`/sessions/${sessionId}/chat`, {
+    /** Run one turn and wait for the complete JSON response (no streaming). */
+    async agentOnce(sessionId, body) {
+        return this.request(`/sessions/${sessionId}/agent`, {
             method: 'POST',
-            body: JSON.stringify({ message, agent_type: agentType }),
+            body: JSON.stringify({ ...body, stream: false }),
         });
     },
 
-    async getChatHistory(sessionId, agentType = 'doubt') {
-        return this.request(`/sessions/${sessionId}/chat/history?agent_type=${agentType}`);
-    },
-
-    async generateTest(sessionId, numQuestions = 10, difficulty = 'medium') {
-        return this.request(`/sessions/${sessionId}/test/generate`, {
+    /**
+     * Run one turn as a Server-Sent-Events stream. `handlers` maps event types to callbacks:
+     *   start | route | token | tool_start | tool_end | retry | audio | notes_progress | interrupt | error | final
+     * Resolves with the `final` event's data (rejects on a stream `error` event or an HTTP error).
+     */
+    async agentStream(sessionId, body, handlers = {}, signal) {
+        const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/agent`, {
             method: 'POST',
-            body: JSON.stringify({ num_questions: numQuestions, difficulty }),
+            headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+            body: JSON.stringify({ ...body, stream: true }),
+            signal,
         });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({ detail: response.statusText }));
+            throw new Error(typeof err.detail === 'string' ? err.detail : 'Request failed');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let finalEvent = null;
+
+        const dispatch = (raw) => {
+            let type = 'message';
+            const data = [];
+            for (const line of raw.split('\n')) {
+                if (line.startsWith('event:')) type = line.slice(6).trim();
+                else if (line.startsWith('data:')) data.push(line.slice(5).trim());
+            }
+            if (type === 'done') return;
+            const payload = data.length ? JSON.parse(data.join('\n')) : {};
+            if (type === 'final') finalEvent = payload;
+            if (type === 'error') throw new Error(payload.message || 'Agent run failed');
+            if (handlers[type]) handlers[type](payload);
+        };
+
+        for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let idx;
+            while ((idx = buffer.indexOf('\n\n')) !== -1) {
+                const raw = buffer.slice(0, idx);
+                buffer = buffer.slice(idx + 2);
+                if (raw.trim()) dispatch(raw);
+            }
+        }
+        if (buffer.trim()) dispatch(buffer);
+        if (!finalEvent) throw new Error('The connection closed before the response completed.');
+        return finalEvent;
     },
 
-    async submitTest(sessionId, answers) {
-        return this.request(`/sessions/${sessionId}/test/submit`, {
-            method: 'POST',
-            body: JSON.stringify({ answers }),
-        });
+    /** Checkpointed state: viva_score, quiz (no answer key), test_result, notes_draft, interrupt, ... */
+    async getAgentState(sessionId) {
+        return this.request(`/sessions/${sessionId}/agent/state`);
     },
 
-    async getTestResults(sessionId) {
-        return this.request(`/sessions/${sessionId}/test/results`);
+    async getAgentHistory(sessionId, agent) {
+        const qs = agent ? `?agent=${encodeURIComponent(agent)}` : '';
+        return this.request(`/sessions/${sessionId}/agent/history${qs}`);
     },
 };

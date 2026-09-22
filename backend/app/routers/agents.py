@@ -1,226 +1,86 @@
+"""Unified agent API.
+
+    POST /api/sessions/{id}/agent            run one turn (SSE stream by default, JSON with stream=false)
+    GET  /api/sessions/{id}/agent/state      checkpointed state projection (viva score, quiz, notes, ...)
+    GET  /api/sessions/{id}/agent/history    conversation history, optionally filtered by agent
+
+This replaces the separate /notes, /chat, /test/generate and /test/submit routes: the supervisor node
+inside the graph decides which specialist handles the turn, and LangGraph's checkpointer (keyed by
+thread_id == session_id) owns all conversation state.
+"""
 import asyncio
-from fastapi import APIRouter, HTTPException
-from backend.app.models import (
-    ChatRequest, ChatResponse, NotesResponse,
-    GenerateTestRequest, SubmitTestRequest,
-    TestResponse, TestQuestion, TestResultResponse
-)
-from backend.database import (
-    get_session, update_session,
-    insert_message, get_messages,
-    insert_test_result, get_test_results,
-    save_video_material, get_video_material
-)
-from backend.app.agents.supervisor import get_graph
-from backend.app.agents.notes_agent import notes_node
-from backend.app.agents.test_agent import generate_test_questions, evaluate_test, get_or_build_mcq_pool
-from langchain_core.messages import HumanMessage
+import json
+from typing import AsyncIterator, Optional
+
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
+
+from backend.app.graph.service import AgentRequestError, AgentService
+from backend.app.models import AgentRequest, AgentResponse
+from backend.database import get_session
 
 router = APIRouter(tags=["agents"])
 
-# In-memory store for test data (answer keys) keyed by session_id
-_test_store = {}
+
+def _service(request: Request) -> AgentService:
+    service = getattr(request.app.state, "agent_service", None)
+    if service is None:
+        raise HTTPException(status_code=503, detail="Agent graph is not initialised")
+    return service
 
 
-@router.post("/sessions/{session_id}/notes", response_model=NotesResponse)
-async def generate_notes(session_id: str):
-    """Generate or retrieve cached AI notes for the session's lecture."""
-    session = get_session(session_id)
+async def _require_session(session_id: str) -> dict:
+    session = await asyncio.to_thread(get_session, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    
-    transcript = session.get("transcript_text", "")
-    frame_urls = session.get("frame_urls", [])
-    video_id = session.get("video_id", "")
-    
-    if not transcript:
-        raise HTTPException(status_code=400, detail="No transcript available. Process the video first.")
-    
-    # 1. Check if notes are already saved in session or video material cache
-    existing_notes = session.get("notes_markdown") or get_video_material(video_id, "notes_markdown")
-    if existing_notes:
-        print(f"[NOTES MATERIAL CACHE HIT] Returning saved notes for video {video_id} (Session {session_id})")
-        update_session(session_id, {"notes_markdown": existing_notes})
-        return NotesResponse(
-            markdown=existing_notes,
-            frame_urls=frame_urls if isinstance(frame_urls, list) else []
+    return session
+
+
+def _sse(event: dict) -> str:
+    return f"event: {event['type']}\ndata: {json.dumps(event, default=str)}\n\n"
+
+
+async def _sse_stream(events: AsyncIterator[dict]) -> AsyncIterator[str]:
+    async for event in events:
+        yield _sse(event)
+    yield "event: done\ndata: {}\n\n"
+
+
+@router.post("/sessions/{session_id}/agent")
+async def run_agent(session_id: str, body: AgentRequest, request: Request):
+    """Run one turn of the multi-agent graph for this session."""
+    await _require_session(session_id)
+    service = _service(request)
+
+    try:
+        await service.prepare(session_id, body)  # reject impossible requests (e.g. resume with nothing paused) with a real HTTP status
+    except AgentRequestError as e:
+        raise HTTPException(status_code=e.status, detail=e.detail)
+
+    if body.stream:
+        return StreamingResponse(
+            _sse_stream(service.stream(session_id, body)),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
         )
-    
-    # 2. Run the notes agent directly to generate new notes
-    print(f"[AGENT: NOTES] Generating lecture notes for video {video_id}...")
-    state = {
-        "messages": [HumanMessage(content="Generate comprehensive lecture notes")],
-        "session_id": session_id,
-        "transcript": transcript,
-        "frame_urls": frame_urls if isinstance(frame_urls, list) else [],
-        "current_agent": "notes",
-        "notes": "",
-        "test_data": {},
-        "viva_score": {},
-    }
-    
-    result = await asyncio.to_thread(notes_node, state)
-    notes_md = result.get("notes", "")
-    
-    # Save notes to session and global video material cache
-    update_session(session_id, {"notes_markdown": notes_md})
-    save_video_material(video_id, "notes_markdown", notes_md)
-    
-    return NotesResponse(
-        markdown=notes_md,
-        frame_urls=frame_urls if isinstance(frame_urls, list) else []
-    )
+
+    final = await service.run_once(session_id, body)
+    if final.get("type") == "error":
+        raise HTTPException(status_code=final.get("status", 500), detail=final.get("message", "Agent run failed"))
+    return AgentResponse.model_validate({k: v for k, v in final.items() if k != "type"})
 
 
-@router.get("/sessions/{session_id}/notes", response_model=NotesResponse)
-async def get_notes(session_id: str):
-    """Get previously generated notes."""
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    notes_md = session.get("notes_markdown", "")
-    frame_urls = session.get("frame_urls", [])
-    
-    return NotesResponse(
-        markdown=notes_md or "",
-        frame_urls=frame_urls if isinstance(frame_urls, list) else []
-    )
+@router.get("/sessions/{session_id}/agent/state")
+async def get_agent_state(session_id: str, request: Request):
+    session = await _require_session(session_id)
+    view = await _service(request).snapshot(session_id)
+    if not view["notes_draft"]:
+        # Notes saved by an earlier session of the same video (or generated before checkpointing).
+        view["notes_draft"] = session.get("notes_markdown") or ""
+    return view
 
 
-@router.post("/sessions/{session_id}/chat", response_model=ChatResponse)
-async def chat_with_agent(session_id: str, request: ChatRequest):
-    """Send a message to the doubt/viva agent."""
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    transcript = session.get("transcript_text", "")
-    frame_urls = session.get("frame_urls", [])
-    
-    # Save user message
-    insert_message({
-        "session_id": session_id,
-        "role": "user",
-        "content": request.message,
-        "agent_type": request.agent_type
-    })
-    
-    # Get conversation history
-    history = get_messages(session_id, request.agent_type)
-    
-    # Build message list from history
-    from langchain_core.messages import AIMessage
-    lang_messages = []
-    for msg in history:
-        if msg.get("role") == "user":
-            lang_messages.append(HumanMessage(content=msg["content"]))
-        else:
-            lang_messages.append(AIMessage(content=msg["content"]))
-    
-    # Add the current user message
-    lang_messages.append(HumanMessage(content=request.message))
-    
-    # Prepare state
-    state = {
-        "messages": lang_messages,
-        "session_id": session_id,
-        "transcript": transcript,
-        "frame_urls": frame_urls if isinstance(frame_urls, list) else [],
-        "current_agent": request.agent_type,
-        "notes": "",
-        "test_data": {},
-        "viva_score": session.get("viva_score", {"asked": 0, "correct": 0}),
-    }
-    
-    # Route to the right agent
-    if request.agent_type == "viva":
-        from backend.app.agents.viva_agent import viva_node
-        result = await asyncio.to_thread(viva_node, state)
-    else:
-        from backend.app.agents.doubt_agent import doubt_node
-        result = await asyncio.to_thread(doubt_node, state)
-    
-    # Extract response
-    response_messages = result.get("messages", [])
-    response_content = response_messages[-1].content if response_messages else "I couldn't generate a response."
-    
-    # Save assistant message
-    insert_message({
-        "session_id": session_id,
-        "role": "assistant",
-        "content": response_content,
-        "agent_type": request.agent_type
-    })
-    
-    # Update viva score if applicable
-    if request.agent_type == "viva" and "viva_score" in result:
-        update_session(session_id, {"viva_score": result["viva_score"]})
-    
-    return ChatResponse(
-        role="assistant",
-        content=response_content,
-        agent_type=request.agent_type
-    )
-
-
-@router.get("/sessions/{session_id}/chat/history")
-async def get_chat_history(session_id: str, agent_type: str = "doubt"):
-    """Get chat history for a session."""
-    messages = get_messages(session_id, agent_type)
-    return {"messages": messages}
-
-
-@router.post("/sessions/{session_id}/test/generate")
-async def generate_test(session_id: str, request: GenerateTestRequest):
-    """Generate or sample from a large pre-saved MCQ question bank (N=30) for a video."""
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    transcript = session.get("transcript_text", "")
-    video_id = session.get("video_id", "")
-    
-    if not transcript:
-        raise HTTPException(status_code=400, detail="No transcript available.")
-    
-    test_data = await asyncio.to_thread(
-        get_or_build_mcq_pool, video_id, transcript, request.num_questions, request.difficulty
-    )
-    
-    if not test_data["questions"]:
-        raise HTTPException(status_code=500, detail="Failed to generate test questions.")
-    
-    _test_store[session_id] = test_data
-    
-    return {
-        "questions": test_data["questions"]
-    }
-
-
-@router.post("/sessions/{session_id}/test/submit")
-async def submit_test(session_id: str, request: SubmitTestRequest):
-    """Submit test answers and get results."""
-    test_data = _test_store.get(session_id)
-    if not test_data:
-        raise HTTPException(status_code=404, detail="No test found. Generate a test first.")
-    
-    results = evaluate_test(test_data, request.answers)
-    
-    # Save results to database
-    insert_test_result({
-        "session_id": session_id,
-        "questions": test_data["questions"],
-        "user_answers": request.answers,
-        "score": results["score"],
-        "total": results["total"]
-    })
-    
-    return results
-
-
-@router.get("/sessions/{session_id}/test/results")
-async def get_test_results_endpoint(session_id: str):
-    """Get test results for a session."""
-    results = get_test_results(session_id)
-    return {"results": results}
+@router.get("/sessions/{session_id}/agent/history")
+async def get_agent_history(session_id: str, request: Request, agent: Optional[str] = None):
+    await _require_session(session_id)
+    return {"messages": await _service(request).history(session_id, agent)}

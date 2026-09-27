@@ -485,10 +485,54 @@
     margin-bottom: 1.5rem;
 }
 
+.viva-answer-input-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
 .viva-answer-textarea {
     width: 100%;
     min-height: 120px;
     resize: vertical;
+}
+
+.mic-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    margin-top: 2px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.mic-btn svg {
+    width: 19px;
+    height: 19px;
+}
+
+.mic-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.mic-btn.recording {
+    background: var(--error);
+    border-color: var(--error);
+    color: #fff;
+    animation: pulse 1.4s infinite;
+}
+
+.mic-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .viva-feedback-card {

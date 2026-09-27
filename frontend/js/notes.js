@@ -4,12 +4,16 @@ window.NotesModule = (() => {
     const generateBtn = document.getElementById('generate-notes-btn');
     const downloadBtn = document.getElementById('download-pdf-btn');
 
-    // Custom marked renderer for images
+    // Custom marked renderer for images.
+    // marked v5+ passes a single token object ({href, title, text}) instead of positional
+    // arguments -- using the old (href, title, text) signature silently renders
+    // `<img src="[object Object]">` (an <img> tag exists, but nothing loads).
     const renderer = new marked.Renderer();
-    renderer.image = function(href, title, text) {
-        return `<img src="${href}" alt="${text}" class="frame-image" title="${title || ''}">`;
+    renderer.image = function(token) {
+        const { href, title, text } = token || {};
+        return `<img src="${href}" alt="${text || ''}" class="frame-image" title="${title || ''}" loading="lazy">`;
     };
-    marked.setOptions({ renderer });
+    marked.use({ renderer });
 
     let hasNotes = false;
 

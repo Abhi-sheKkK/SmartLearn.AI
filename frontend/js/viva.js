@@ -17,6 +17,8 @@ window.VivaModule = (() => {
     const endBtn = document.getElementById('viva-end-btn');
     const feedbackArea = document.getElementById('viva-feedback-area');
     const audioEl = document.getElementById('viva-audio');
+    const micBtn = document.getElementById('viva-mic-btn');
+    const micStatus = document.getElementById('viva-mic-status');
 
     const MATH_DELIMITERS = [
         {left: '$$', right: '$$', display: true},
@@ -56,6 +58,82 @@ window.VivaModule = (() => {
         }
     };
 
+    // ---- Speech-to-text answering (Web Speech API) --------------------------------------------
+    // Client-side only: no backend involvement. Falls back to hidden (text-only) where unsupported
+    // (Firefox, Safari < 17 desktop, most non-Chromium browsers).
+    const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const micSupported = !!SpeechRecognitionImpl;
+    let recognizer = null;
+    let isRecording = false;
+    let baseAnswerText = ''; // textarea contents captured when recording started; speech is appended after it
+
+    const setMicUI = (recording) => {
+        isRecording = recording;
+        micBtn.classList.toggle('recording', recording);
+        micBtn.title = recording ? 'Stop recording' : 'Answer by speech';
+        micStatus.style.display = recording ? 'block' : 'none';
+        if (recording) micStatus.textContent = 'Listening... click the mic to stop.';
+    };
+
+    const stopRecording = () => {
+        if (recognizer && isRecording) recognizer.stop(); // onend finishes the UI reset
+    };
+
+    const initSpeechRecognition = () => {
+        if (!SpeechRecognitionImpl) return; // leave micBtn hidden
+
+        recognizer = new SpeechRecognitionImpl();
+        recognizer.continuous = true;
+        recognizer.interimResults = true;
+        recognizer.lang = navigator.language || 'en-US';
+
+        recognizer.onresult = (event) => {
+            let finalChunk = '';
+            let interimChunk = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) finalChunk += transcript;
+                else interimChunk += transcript;
+            }
+            if (finalChunk) {
+                baseAnswerText = (baseAnswerText.trim() + ' ' + finalChunk.trim()).trim() + ' ';
+            }
+            answerInput.value = (baseAnswerText + interimChunk).trim();
+        };
+
+        recognizer.onerror = (event) => {
+            const messages = {
+                'not-allowed': 'Microphone access was denied. Allow microphone access in your browser to use speech input.',
+                'no-speech': "Didn't catch that -- no speech detected.",
+                'audio-capture': 'No microphone was found.',
+            };
+            micStatus.style.display = 'block';
+            micStatus.textContent = messages[event.error] || `Speech recognition error: ${event.error}`;
+            micStatus.style.color = 'var(--error)';
+        };
+
+        recognizer.onend = () => {
+            setMicUI(false);
+            micStatus.style.color = '';
+            answerInput.focus();
+        };
+
+        micBtn.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+                return;
+            }
+            baseAnswerText = answerInput.value.trim() ? answerInput.value.trim() + ' ' : '';
+            micStatus.style.color = '';
+            try {
+                recognizer.start();
+                setMicUI(true);
+            } catch (err) {
+                // start() throws if a recognition session is already active (e.g. double-click race).
+            }
+        });
+    };
+
     const setMode = (next) => {
         mode = next;
         const clarifying = next === 'clarifying';
@@ -68,6 +146,7 @@ window.VivaModule = (() => {
         answerInput.disabled = reviewing;
         submitBtn.disabled = false;
         skipBtn.disabled = false;
+        micBtn.disabled = reviewing;
     };
 
     // Apply the authoritative post-turn state to the UI.
@@ -127,6 +206,8 @@ window.VivaModule = (() => {
     };
 
     const handleStart = async () => {
+        stopRecording();
+        micStatus.style.display = 'none';
         startBtn.disabled = true;
         startBtn.textContent = 'Starting...';
         try {
@@ -135,6 +216,7 @@ window.VivaModule = (() => {
             feedbackArea.style.display = 'none';
             answerInput.style.display = '';
             questionText.style.display = '';
+            micBtn.style.display = micSupported ? '' : 'none';
             endBtn.style.display = '';
             endBtn.disabled = false;
             endBtn.textContent = 'End Session';
@@ -154,8 +236,10 @@ window.VivaModule = (() => {
     };
 
     const submit = async (body, busyLabel) => {
+        stopRecording();
         submitBtn.disabled = true;
         skipBtn.disabled = true;
+        micBtn.disabled = true;
         answerInput.disabled = true;
         submitBtn.textContent = busyLabel;
         feedbackArea.style.display = 'block';
@@ -195,6 +279,7 @@ window.VivaModule = (() => {
     };
 
     const handleEnd = async () => {
+        stopRecording();
         endBtn.disabled = true;
         endBtn.textContent = 'Ending...';
         try {
@@ -206,6 +291,8 @@ window.VivaModule = (() => {
             submitBtn.style.display = 'none';
             nextBtn.style.display = 'none';
             skipBtn.style.display = 'none';
+            micBtn.style.display = 'none';
+            micStatus.style.display = 'none';
             endBtn.style.display = 'none';
             questionText.style.display = 'none';
             setAudio('');
@@ -226,6 +313,7 @@ window.VivaModule = (() => {
             activeView.style.display = 'block';
             renderText(questionText, viva.pending_question);
             qCountDisplay.textContent = (viva.asked || 0) + 1;
+            micBtn.style.display = micSupported ? '' : 'none';
             setAudio(state.audio_url);
             if (state.interrupt) {
                 applyFinal({ interrupted: true, interrupt: state.interrupt, state, messages: [] });
@@ -240,6 +328,7 @@ window.VivaModule = (() => {
     return {
         init: (sessionId) => {
             currentSessionId = sessionId;
+            initSpeechRecognition();
             startBtn.addEventListener('click', handleStart);
             submitBtn.addEventListener('click', handleSubmit);
             skipBtn.addEventListener('click', handleSkip);

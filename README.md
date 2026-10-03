@@ -1,16 +1,16 @@
-# SmartLearn.AI 🎓✨
+# SmartLearn.AI
 
-Transform YouTube lectures into interactive learning experiences using AI.
+An agentic, multimodal learning platform that transforms video lectures into structured technical documentation, contextual doubt resolution, and interactive knowledge evaluations.
 
-## Features
+## Overview & Core Capabilities
 
-- **📝 Smart LaTeX Notes**: AI-generated structured notes with embedded visual diagrams, slides, and flowcharts extracted directly from YouTube video lectures.
-- **💬 Doubt Assistant Chatbot**: Multi-turn chat agent that answers student questions by cross-referencing video transcripts, timestamp visual cues, and LLM knowledge.
-- **🎤 Viva / Interview Practice**: Interactive 1-on-1 viva session where an AI examiner asks conceptual questions, scores your verbal responses, and provides targeted feedback.
-- **📋 MCQ Quiz Engine**: Auto-generates customizable quizzes with instant grading and detailed explanations per question.
-- **⚡ Visual Frame Extraction**: Automatically detects moments in the lecture where instructors point to slides, diagrams, or code on screen using LLM cue analysis and SSIM image deduplication.
+- **Structured Technical Notes**: Automated synthesis of lecture content into structured Markdown/LaTeX notes, featuring synchronized visual diagrams, slide captures, and algorithmic derivations extracted directly from video timelines.
+- **Contextual Doubt Resolution**: Multi-turn dialogue agent capable of answering complex domain queries by cross-referencing video transcripts, timestamped visual cues, and sandbox-executed computations.
+- **Interactive Oral Examination (Viva)**: 1-on-1 conceptual assessment module where an evaluator agent assesses student understanding, scores verbal responses against technical rubrics, and dynamically adapts questioning depth.
+- **Objective Evaluation Engine**: Automated generation of customizable multiple-choice assessments with immediate scoring and per-question pedagogical rationales.
+- **Multimodal Visual Keyframe Pipeline**: Stream-seek extraction and Structural Similarity Index (SSIM) deduplication to capture high-value visual artifacts (slides, code snippets, architectural diagrams) without requiring full video downloads.
 
-## Tech Stack
+## System Architecture & Tech Stack
 
 - **Backend**: FastAPI, Uvicorn, Pydantic v2
 - **Multi-Agent Framework**: LangGraph `StateGraph` with a supervisor, parallel workers, human-in-the-loop interrupts and SQLite checkpointing (see [Agent architecture](#agent-architecture))
